@@ -36,7 +36,15 @@
 #endif
 #if defined(HMAT_FORCE_MALLOC_INFO) && !defined(HAVE_MALLOC_INFO)
 #define HAVE_MALLOC_INFO
-int malloc_info(int options, FILE *fp);
+extern "C" {
+int __attribute__((weak)) malloc_info(int options, FILE *fp);
+}
+#endif
+
+#if defined(HMAT_HEAPTOP)
+extern "C" {
+size_t __attribute__((weak)) heaptop_allocated();
+}
 #endif
 
 // Do not care about thread safety. This is an acceptable approximation.
@@ -220,7 +228,10 @@ void MemoryInstrumenter::allocImpl(mem_t size, char type) {
         //buffer[k++] = global_mallinfo.usmblks;
         //buffer[k++] = global_mallinfo.fsmblks;
 
-#ifdef HAVE_MALLOC_INFO
+
+#ifdef HMAT_HEAPTOP
+        buffer[k++] = heaptop_allocated();
+#elif defined(HAVE_MALLOC_INFO)
         // mallinfo does not support value greater than 2GiB so we overwrite
         // the result with a value taken from malloc_info
         buffer[k++] = aspace_total;
