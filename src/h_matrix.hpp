@@ -580,6 +580,12 @@ public:
    * This is better than overriding << because it allows to use printf.
    */
   std::string toString() const;
+
+  /**
+   * Return the number of element in non admissible blocks assuming all
+   * those blocks will be full
+   */
+  size_t nonAdmissibleBlocksSize() const;
 };
 
 }  // end namespace hmat

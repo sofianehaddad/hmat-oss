@@ -462,6 +462,22 @@ template<typename T> void HMatrix<T>::info(hmat_info_t & result) {
 }
 
 template<typename T>
+size_t HMatrix<T>::nonAdmissibleBlocksSize() const {
+    size_t r = 0;
+    if(isLeaf() && !admissible) {
+        r = cols()->size() * rows()->size();
+    } else if(!isLeaf()){
+        for (int i = 0; i < 4; i++) {
+            HMatrix<T> *child = getChild(i);
+            if (child)
+                r += child->nonAdmissibleBlocksSize();
+        }
+    }
+
+    return r;
+}
+
+template<typename T>
 void HMatrix<T>::eval(FullMatrix<T>* result, bool renumber) const {
   if (isLeaf()) {
     FullMatrix<T> *mat = isRkMatrix() ? rk()->eval() : full();
