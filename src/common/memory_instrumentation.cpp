@@ -32,11 +32,14 @@
 #include <malloc.h>
 // Do not care about thread safety. This is an acceptable approximation.
 static struct mallinfo global_mallinfo;
+static size_t system_current, aspace_total, aspace_mprotect;
 static int mallinfo_counter;
-#endif
-static int write_counter;
 static int mallinfo_sampling;
+static int write_counter;
 static int write_sampling;
+static int malloc_info_counter;
+static int malloc_info_sampling;
+#endif
 
 namespace hmat {
 
@@ -86,6 +89,8 @@ MemoryInstrumenter::MemoryInstrumenter(): enabled_(false) {
     write_sampling = ws ? atoi(ws) : 1;
     char * mi = getenv("HMAT_MEMINSTR_MI");
     mallinfo_sampling = mi ? atoi(mi) : 100;
+    mi = getenv("HMAT_MEMINSTR_MI2");
+    malloc_info_sampling = mi ? atoi(mi) : 100;
 }
 
 void MemoryInstrumenter::setFile(const std::string & filename) {
@@ -120,6 +125,48 @@ char MemoryInstrumenter::addType(const std::string & label, bool cumul,
     return labels_.size() - 1;
 }
 
+static int previous_xml_tag(int tag_number, int pos, char * buffer) {
+    int nb_gt = 0;
+    // 70s way of parsing XML
+    for(; pos >= 0; pos--) {
+        if(buffer[pos] == '>')
+            nb_gt ++;
+        if(nb_gt == tag_number)
+            break;
+    }
+    return pos;
+}
+
+static size_t parse_xml_tag(int i, char * buffer) {
+    i -= 3;
+    for(; i >= 0; i--) {
+        if(buffer[i] == '"')
+            break;
+    }
+    i++;
+    return strtoll(buffer+i, NULL, 10);
+}
+
+static void parse_malloc_info() {
+    int pos = 0;
+    char * buffer;
+    size_t buffer_size;
+    FILE * fb = open_memstream(&buffer, &buffer_size);
+    int r = malloc_info(0, fb);
+    fclose(fb);
+    assert(r == 0);
+    pos = previous_xml_tag(2, buffer_size - 1, buffer);
+    aspace_mprotect = parse_xml_tag(pos, buffer);
+
+    pos = previous_xml_tag(1, pos, buffer);
+    aspace_total = parse_xml_tag(pos, buffer);
+
+    pos = previous_xml_tag(2, pos, buffer);
+    system_current = parse_xml_tag(pos, buffer);
+
+    free(buffer);
+}
+
 void MemoryInstrumenter::allocImpl(mem_t size, char type) {
     if(enabled_) {
         std::vector<mem_t> buffer(labels_.size());
@@ -137,19 +184,33 @@ void MemoryInstrumenter::allocImpl(mem_t size, char type) {
 
 #ifdef __GLIBC__
         mallinfo_counter ++;
-        if(mallinfo_counter >= mallinfo_sampling) {
+        if(mallinfo_counter >= mallinfo_sampling && mallinfo_sampling > 0) {
             global_mallinfo = mallinfo();
             mallinfo_counter = 0;
         }
+
+        malloc_info_counter ++;
+        if(malloc_info_counter >= malloc_info_sampling && malloc_info_sampling > 0) {
+            malloc_info_counter = 0;
+            parse_malloc_info();
+        }
+
         int k = 3;
-        buffer[k++] = global_mallinfo.arena;
+        //buffer[k++] = global_mallinfo.arena;
+        buffer[k++] = system_current;
+
         //buffer[k++] = global_mallinfo.ordblks;
         //buffer[k++] = global_mallinfo.smblks;
         //buffer[k++] = global_mallinfo.hblks;
         buffer[k++] = global_mallinfo.hblkhd;
         //buffer[k++] = global_mallinfo.usmblks;
         //buffer[k++] = global_mallinfo.fsmblks;
-        buffer[k++] = global_mallinfo.uordblks;
+
+        // mallinfo does not support value greater than 2GiB so we overwrite
+        // the result with a value taken from malloc_info
+        //buffer[k++] = global_mallinfo.uordblks;
+        buffer[k++] = aspace_total;
+
         //buffer[k++] = global_mallinfo.fordblks;
         buffer[k++] = global_mallinfo.keepcost;
 #endif
