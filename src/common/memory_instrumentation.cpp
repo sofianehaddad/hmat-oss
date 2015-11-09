@@ -30,6 +30,15 @@
 
 #ifdef __GLIBC__
 #include <malloc.h>
+
+#if __GLIBC_MINOR__ >= 10
+#define HAVE_MALLOC_INFO
+#endif
+#if defined(HMAT_FORCE_MALLOC_INFO) && !defined(HAVE_MALLOC_INFO)
+#define HAVE_MALLOC_INFO
+int malloc_info(int options, FILE *fp);
+#endif
+
 // Do not care about thread safety. This is an acceptable approximation.
 static struct mallinfo global_mallinfo;
 static size_t system_current, aspace_total, aspace_mprotect;
@@ -148,6 +157,7 @@ static size_t parse_xml_tag(int i, char * buffer) {
 }
 
 static void parse_malloc_info() {
+#ifdef HAVE_MALLOC_INFO
     int pos = 0;
     char * buffer;
     size_t buffer_size;
@@ -165,6 +175,7 @@ static void parse_malloc_info() {
     system_current = parse_xml_tag(pos, buffer);
 
     free(buffer);
+#endif
 }
 
 void MemoryInstrumenter::allocImpl(mem_t size, char type) {
@@ -196,8 +207,11 @@ void MemoryInstrumenter::allocImpl(mem_t size, char type) {
         }
 
         int k = 3;
-        //buffer[k++] = global_mallinfo.arena;
+#ifdef HAVE_MALLOC_INFO
         buffer[k++] = system_current;
+#else
+        buffer[k++] = global_mallinfo.arena;
+#endif
 
         //buffer[k++] = global_mallinfo.ordblks;
         //buffer[k++] = global_mallinfo.smblks;
@@ -206,10 +220,13 @@ void MemoryInstrumenter::allocImpl(mem_t size, char type) {
         //buffer[k++] = global_mallinfo.usmblks;
         //buffer[k++] = global_mallinfo.fsmblks;
 
+#ifdef HAVE_MALLOC_INFO
         // mallinfo does not support value greater than 2GiB so we overwrite
         // the result with a value taken from malloc_info
-        //buffer[k++] = global_mallinfo.uordblks;
         buffer[k++] = aspace_total;
+#else
+        buffer[k++] = global_mallinfo.uordblks;
+#endif
 
         //buffer[k++] = global_mallinfo.fordblks;
         buffer[k++] = global_mallinfo.keepcost;
