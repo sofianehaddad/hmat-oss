@@ -108,6 +108,12 @@ MemoryInstrumenter::MemoryInstrumenter(): enabled_(false) {
     mallinfo_sampling = mi ? atoi(mi) : 100;
     mi = getenv("HMAT_MEMINSTR_MI2");
     malloc_info_sampling = mi ? atoi(mi) : 100;
+#ifdef HMAT_FORCE_MALLOC_INFO
+    HMAT_ASSERT_MSG(malloc_info != NULL, "malloc_info not found in the glibc.");
+#endif
+#ifdef HMAT_HEAPTOP
+    HMAT_ASSERT_MSG(heaptop_allocated != NULL, "heaptop not preloaded.");
+#endif
 }
 
 void MemoryInstrumenter::setFile(const std::string & filename) {
