@@ -2311,6 +2311,37 @@ template<typename T>  void HMatrix<T>::rk(const FullMatrix<T> * a, const FullMat
         rank_ = rk_->rank();
 }
 
+template<typename T> size_t HMatrix<T>::numberOfValues() const {
+    std::vector<Tree<4>*> leaves;
+    return numberOfValues(leaves);
+}
+
+template<typename T> size_t HMatrix<T>::numberOfValues(std::vector<Tree<4>*> & leaves) const {
+    this->listAllLeaves(leaves);
+    int n = leaves.size();
+    size_t result = 0;
+    for (int i = 0; i < n; i++) {
+        const HMatrix<T>* leaf = static_cast<const HMatrix<T>*>(leaves[i]);
+        int r = leaf->rows()->size();
+        int c = leaf->cols()->size();
+        if (leaf->isRkMatrix()) {
+            if(leaf->rk())
+                result += leaf->rk()->compressedSize();
+        } else if(leaf->isFullMatrix()) {
+            result += r * c;
+            // The HMatrix has been factored by LDLt decomposition, also take the diagonal.
+            if (leaf->full()->diagonal) {
+                result += r;
+            }
+            // The HMatrix has been factored by LU decomposition, also take the pivots.
+            if (leaf->full()->pivots) {
+                result += r;
+            }
+        }
+    }
+    return result;
+}
+
 template<typename T> std::string HMatrix<T>::toString() const {
     std::vector<Tree<4>*> leaves;
     listAllLeaves(leaves);

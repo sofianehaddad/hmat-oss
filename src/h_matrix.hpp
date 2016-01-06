@@ -580,6 +580,9 @@ public:
       return cols_;
   }
 
+  size_t numberOfValues() const;
+  size_t numberOfValues(std::vector<Tree<4>*>& leaves) const;
+
   /**
    * Convert this HMatrix to a string for debug.
    * This is better than overriding << because it allows to use printf.
