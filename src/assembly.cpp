@@ -53,8 +53,10 @@ void AssemblyFunction<T>::assemble(const LocalSettings & settings,
       if (HMatrix<T>::recompress) {
         rkDp->truncate();
       }
+      allocationObserver.allocate(rkDp->compressedSize() * sizeof(T));
       rkMatrix = fromDoubleRk<T>(rkDp);
     } else {
+      allocationObserver.allocate(rows.data.size() * cols.data.size() * sizeof(T));
       fullMatrix = fromDoubleFull<T>(function_.assemble(&(rows.data), &(cols.data), NULL, allocationObserver));
     }
 }

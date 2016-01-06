@@ -327,8 +327,9 @@ void HMatrix<T>::assembleSymmetric(Assembly<T>& f,
     // If the leaf is admissible, matrix assembly and compression.
     // if not we keep the matrix.
     this->assemble(f, ao);
-    if (isRkMatrix()) {
-      if ((!onlyLower) && (upper != this)) {
+    if ((!onlyLower) && (upper != this)) {
+      ao.allocate(this->numberOfValues() * sizeof(T));
+      if (isRkMatrix()) {
         // Admissible leaf: a matrix represented by AB^t is transposed by exchanging A and B.
         RkMatrix<T>* newRk = new RkMatrix<T>(NULL, upper->rows(),
                                           NULL, upper->cols(), rk()->method);
@@ -337,9 +338,7 @@ void HMatrix<T>::assembleSymmetric(Assembly<T>& f,
         if(upper->rk() != NULL)
             delete upper->rk();
         upper->rk(newRk);
-      }
-    } else {
-      if ((!onlyLower) && ( upper != this)) {
+      } else {
         if(isFullMatrix())
             upper->full(full()->copyAndTranspose());
         else
