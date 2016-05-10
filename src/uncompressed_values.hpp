@@ -27,7 +27,14 @@
 
 namespace hmat {
 
-
+/**
+ * @brief Base class to extract uncompressed values from a matrix
+ * Sub classes must implement getLeafValues()
+ * T is the scalar type to extract
+ * M is the matrix type
+ * I is the current class type for CRTP
+ * @see https://en.wikipedia.org/wiki/Curiously_recurring_template_pattern
+ */
 template <typename T, template <typename> class M, typename I> class UncompressedValuesBase {
   protected:
     const M<T> * matrix_;
@@ -40,6 +47,7 @@ template <typename T, template <typename> class M, typename I> class Uncompresse
      */
     IndiceIt rowStart_, rowEnd_, colStart_, colEnd_;
 
+    /** truncate the begin/end interval so it is included in the clusterData interval */
     void compatibleQuery(const IndexSet & clusterData, IndiceIt & begin, IndiceIt & end) {
         int lb = clusterData.offset();
         int ub = lb + clusterData.size() - 1;
@@ -92,7 +100,17 @@ template <typename T, template <typename> class M, typename I> class Uncompresse
             static_cast<I*>(this)->getLeafValues();
     }
   public:
-    /** Actually uncompress */
+    /**
+     * @brief uncompress Extract values from the matrix
+     * The sub-matrix with rows and cols is extracted and copied to values.
+     * @param matrix
+     * @param rows The row ids to uncompress
+     * @param rowSize The number of lines to uncompress
+     * @param cols The column ids to uncompress
+     * @param colSize The number of column to uncompress
+     * @param values The target buffer where to store uncompressed values
+     * @param ld The leading dimension of the target buffer
+     */
     void uncompress(const M<T> * matrix, int * rows, int rowSize, int * cols, int colSize, T *values, int ld = -1)
     {
         assert(matrix->father == NULL);
@@ -110,6 +128,7 @@ template <typename T, template <typename> class M, typename I> class Uncompresse
     }
 };
 
+/** UncompressedValuesBase specialisation for HMatrix<T> */
 template <typename T> class UncompressedValues: public UncompressedValuesBase<T, HMatrix, UncompressedValues<T> > {
     typedef std::vector<std::pair<int, int> >::iterator IndiceIt;
     friend class UncompressedValuesBase<T, HMatrix, UncompressedValues<T> >;
