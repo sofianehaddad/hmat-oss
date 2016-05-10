@@ -47,6 +47,11 @@ template <typename T, template <typename> class M, typename I> class Uncompresse
      */
     IndiceIt rowStart_, rowEnd_, colStart_, colEnd_;
 
+    /** CRTP accessor */
+    I & me() {
+        return *static_cast<I*>(this);
+    }
+
     /** truncate the begin/end interval so it is included in the clusterData interval */
     void compatibleQuery(const IndexSet & clusterData, IndiceIt & begin, IndiceIt & end) {
         int lb = clusterData.offset();
@@ -85,20 +90,23 @@ template <typename T, template <typename> class M, typename I> class Uncompresse
     void getValues() {
         if (rowStart_ == rowEnd_ || colStart_ == colEnd_)
             return;
-        if (!matrix_->isLeaf()) {
+        if (me().isLeaf()) {
+            me().getLeafValues();
+        } else {
             for (int i = 0; i < matrix_->nrChild(); i++) {
                 I view;
                 M<T> * child = matrix_->getChild(i);
                 view.matrix_ = child;
                 view.values_ = values_;
                 view.valuesLd_ = valuesLd_;
-                view.compatibleQuery(*child->rows(), rowStart_, rowEnd_);
-                view.compatibleQuery(*child->cols(), colStart_, colEnd_);
+                view.compatibleQuery(*view.matrix().rows(), rowStart_, rowEnd_);
+                view.compatibleQuery(*view.matrix().cols(), colStart_, colEnd_);
+                view.init(me());
                 view.getValues();
             }
-        } else
-            static_cast<I*>(this)->getLeafValues();
+        }
     }
+
   public:
     /**
      * @brief uncompress Extract values from the matrix
@@ -118,13 +126,15 @@ template <typename T, template <typename> class M, typename I> class Uncompresse
         values_ = values;
         valuesLd_ = ld == -1 ? rowSize : ld;
         std::vector<std::pair<int, int> > rowsIndices, colsIndices;
-        createQuery(*matrix->rows(), rows, rowSize, rowsIndices);
+        createQuery(*me().matrix().rows(), rows, rowSize, rowsIndices);
         rowStart_ = rowsIndices.begin();
         rowEnd_ = rowsIndices.end();
-        createQuery(*matrix->cols(), cols, colSize, colsIndices);
+        createQuery(*me().matrix().cols(), cols, colSize, colsIndices);
         colStart_ = colsIndices.begin();
         colEnd_ = colsIndices.end();
+        me().init(me());
         getValues();
+        me().finish();
     }
 };
 
@@ -171,5 +181,17 @@ template <typename T> class UncompressedValues: public UncompressedValuesBase<T,
             assert(false);
         }
     }
+
+    const HMatrix<T> & matrix() const {
+        return *this->matrix_;
+    }
+
+    bool isLeaf() const {
+        return matrix().isLeaf();
+    }
+
+    /** Init from parent */
+    void init(UncompressedValues &) {}
+    void finish(){}
 };
 }
