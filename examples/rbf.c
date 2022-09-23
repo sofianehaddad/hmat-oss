@@ -34,18 +34,24 @@ void interaction_real(void* data, int i, int j, void* result)
   int dim = pdata->dim;
   int k;
   double r = 0.0;
-  for (k= 0; k < dim; ++k)
+  if (i == j)
   {
-    r += (&points[dim * i + k] - &points[dim * j + k]) * (&points[dim * i + k] - &points[dim * j + k]);
+    *((double *)result) = 10.0;
   }
+  else
+  {
 
-  *((double*)result) = exp(-r / pdata->l);
+    for (k = 0; k < dim; ++k)
+    {
+      r += (points[dim * i + k] - points[dim * j + k]) * (points[dim * i + k] - points[dim * j + k]);
+    }
+    *((double *)result) = exp(-r / pdata->l);
+  }
 }
 
 
 int main(int argc, char **argv) {
 
-  printf("ok");
   int N, M, dim, i;
   int kLowerSymmetric = 1; /* =0 if not Symmetric */
   double tolerance, l;
@@ -99,8 +105,7 @@ int main(int argc, char **argv) {
           return 1;
        }
     }
-
-
+    hmat_init_default_interface(&hmat, type);
 
     hmat_get_parameters(&settings);
     settings.maxLeafSize = M;
@@ -111,7 +116,6 @@ int main(int argc, char **argv) {
       return 1;
   }
 
-  hmat_init_default_interface(&hmat, type);
 
   double *points = malloc(N * dim * sizeof(double));
   if (dim == 1)
@@ -139,33 +143,33 @@ int main(int argc, char **argv) {
   hmat_delete_clustering(algodof);
 
   hmat.get_info(hmatrix, &mat_info);
-  //printf("HMatrix node count = %d\n", mat_info.nr_block_clusters);
+  printf("HMatrix node count = %d\n", mat_info.nr_block_clusters);
 
-  //fprintf(stdout,"Assembly...");
+  fprintf(stdout,"Assembly...");
+  Time start = now();
   hmat_assemble_context_t ctx_assemble;
   hmat_assemble_context_init(&ctx_assemble);
-  ctx_assemble.compression = hmat_create_compression_aca_plus(tolerance);
+  ctx_assemble.compression = hmat_create_compression_aca_random(tolerance);
   ctx_assemble.user_context = &problem_data;
   ctx_assemble.simple_compute = interaction_real;
   ctx_assemble.lower_symmetric = kLowerSymmetric;
   hmat.assemble_generic(hmatrix, &ctx_assemble);
   hmat_delete_compression(ctx_assemble.compression);
-  //fprintf(stdout, "done.\n");
+  Time end = now();
+  fprintf(stdout, "done.\n");
+  fprintf(stdout, "elapsed time = %f\n", time_diff(start, end));
 
-  //fprintf(stdout,"Factorisation...");
+  fprintf(stdout,"Factorisation...");
+  start = now();
   hmat_factorization_context_t ctx_facto;
   hmat_factorization_context_init(&ctx_facto);
   ctx_facto.factorization = hmat_factorization_hodlrsym;
   hmat.factorize_generic(hmatrix, &ctx_facto);
-  //fprintf(stdout, "done.\n");
+  end = now();
+  fprintf(stdout, "done.\n");
+  fprintf(stdout, "elapsed time = %f\n", time_diff(start, end));
 
-
-  //delete[] points;
-
-
-  //Time start = now();
-  //Time end = now();
-
+  free(points);
   hmat_delete_cluster_tree(cluster_tree);
   hmat.finalize();
   return 0;
