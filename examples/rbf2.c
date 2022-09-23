@@ -45,6 +45,20 @@ double interaction_real(double* points, int i, int j)
   return exp(-dx*dx);
 }
 
+inline static void PointsToFile(double *points, int size, int dim, const char *filename)
+{
+  int i, j;
+  FILE *fp = fopen(filename, "w");
+  for (i = 0; i < size; i++)
+  {
+    for (j = 0; j < dim; j++)
+      fprintf(fp, "%e ", points[dim * i + j]);
+    fprintf(fp, "\n");
+    // fprintf(fp, "%e %e %e\n", points[3 * i], points[3 * i + 1], points[3 * i + 2]);
+  }
+  fclose(fp);
+}
+
 /**
   This structure contains data related to our problem.
 */
@@ -125,7 +139,8 @@ compute_hmat(void *data,
 {
   int i, j;
   double *dValues = (double *) values;
-  block_data_t* bdata = (block_data_t*) data;
+  //float *fValues = (float *)values;
+  block_data_t *bdata = (block_data_t *)data;
 
   int type = bdata->user_context->type;
   int pos = 0;
@@ -135,8 +150,14 @@ compute_hmat(void *data,
 	  case HMAT_DOUBLE_PRECISION:
 	    for (i = 0; i < rowBlockCount; ++i, ++pos)
 	      dValues[pos] = interaction_real(bdata->user_context->points, bdata->row_hmat2client[i + rowBlockBegin + bdata->row_start], col);
-	  break;
-      }
+    	break;
+    case HMAT_SIMPLE_PRECISION:
+      for (i = 0; i < rowBlockCount; ++i, ++pos)
+        dValues[pos] = interaction_real(bdata->user_context->points, bdata->row_hmat2client[i + rowBlockBegin + bdata->row_start], col);
+      break;
+    default:
+      break;
+    }
   }
 }
 
@@ -213,9 +234,8 @@ int main(int argc, char **argv) {
     for (i = 0; i < N; ++i)
       points[i] = -1.0 + 2.0 * i / (N - 1);
   }
-
   printf("done.\n");
-
+  PointsToFile(points, N, dim, "points.txt");
 
   problem_data.n = N;
   problem_data.points = points;
@@ -259,7 +279,7 @@ int main(int argc, char **argv) {
   rc = hmat.factorize_generic(hmatrix, &ctx_facto);
   end = now();
   fprintf(stdout, "elapsed time = %f\n", time_diff(start, end));
-  if (0 != rc)
+   if (0 != rc)
   {
     fprintf(stderr, "Error during factorization, aborting\n");
     exit(rc);
