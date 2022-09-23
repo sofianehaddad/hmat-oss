@@ -384,6 +384,7 @@ hmat_add_example(NAME c-simple-cylinder)
 hmat_add_example(NAME c-simple-kriging)
 hmat_add_example(NAME c-cholesky)
 hmat_add_example(NAME hodlrvsllt)
+hmat_add_example(NAME rbf)
 
 if (BUILD_EXAMPLES)
     enable_testing ()
