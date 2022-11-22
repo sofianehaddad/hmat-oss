@@ -17,6 +17,7 @@
 typedef SSIZE_T ssize_t;
 #endif
 
+int global =0;
 typedef struct {
   int n;
   int dim;
@@ -47,6 +48,7 @@ void interaction_real(void* data, int i, int j, void* result)
     }
     *((double *)result) = exp(-r / pdata->l);
   }
+  global = global + 1;
 }
 
 
@@ -168,6 +170,7 @@ int main(int argc, char **argv) {
   end = now();
   fprintf(stdout, "done.\n");
   fprintf(stdout, "elapsed time = %f\n", time_diff(start, end));
+  fprintf(stdout, "Number of total calls to exp function = %d\n", global);
 
   free(points);
   hmat_delete_cluster_tree(cluster_tree);
