@@ -1,6 +1,6 @@
 on:
   push:
-    branches: [ master ]
+    branches: [ master, sh/tests ]
   pull_request:
 jobs:
   linux-release-shared:
