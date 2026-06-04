@@ -426,6 +426,7 @@ hmat_add_example(NAME c-simple-fpcompression)
 hmat_add_example(NAME c-cholesky-fpcompression)
 hmat_add_example(NAME rbf)
 hmat_add_example(NAME rbf2)
+hmat_add_example(NAME debug_solve_lower)
 
 if (BUILD_EXAMPLES)
     enable_testing ()
